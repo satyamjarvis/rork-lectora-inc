@@ -1,0 +1,24 @@
+-- ENABLE EMAIL CONFIRMATION IN SUPABASE
+-- 
+-- This SQL file is for documentation purposes only.
+-- Email confirmation must be enabled in Supabase Dashboard.
+--
+-- To enable email confirmation:
+-- 
+-- 1. Go to your Supabase Dashboard: https://app.supabase.com
+-- 2. Select your project
+-- 3. Navigate to Authentication > Settings
+-- 4. Under "Auth Providers", find "Email"
+-- 5. Enable "Confirm email"
+-- 6. Save changes
+--
+-- This will require users to verify their email address before they can sign in.
+-- The app has been updated to handle this flow with a verification screen.
+--
+-- Email Template Configuration:
+-- You can also customize the confirmation email template in:
+-- Authentication > Email Templates > Confirm signup
+--
+-- The default redirect URL should be set to:
+-- YOUR_APP_SCHEME://auth/callback (for mobile deep linking)
+-- or left empty to use the verification flow in the app
