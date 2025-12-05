@@ -144,14 +144,15 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const checkAuthStatus = useCallback(async () => {
     try {
       if (!supabase) {
-        console.error('⚠️ Supabase no está inicializado');
+        console.warn('⚠️ Supabase cliente no disponible, continuando sin autenticación');
+        setUser(null);
         setIsLoading(false);
         return;
       }
       
       console.log('🔍 Verificando estado de autenticación...');
       const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Auth check timeout')), 8000)
+        setTimeout(() => reject(new Error('Auth check timeout')), 5000)
       );
       
       const sessionPromise = supabase.auth.getSession();
@@ -166,26 +167,25 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         return;
       }
 
-      const { data, error } = result as any;
+      const { data, error } = result as { data: { session: { user: SupabaseUser } | null }; error: { message?: string } | null };
       const session = data?.session;
 
       if (error) {
-        if (error.message?.includes('Refresh Token') || error.message?.includes('Invalid')) {
-          console.log('🗑️ Sesión inválida detectada, limpiando estado');
+        const errorMsg = error.message || '';
+        if (errorMsg.includes('Refresh Token') || errorMsg.includes('Invalid') || errorMsg.includes('Network')) {
+          console.log('🗑️ Sesión inválida o error de red, limpiando estado');
           try {
             await Promise.race([
               supabase.auth.signOut(),
-              new Promise((resolve) => setTimeout(resolve, 2000))
+              new Promise((resolve) => setTimeout(resolve, 1500))
             ]);
-          } catch (e) {
-            console.warn('⚠️ Error al limpiar sesión:', e);
+          } catch {
+            console.warn('⚠️ No se pudo limpiar la sesión');
           }
-          setUser(null);
         } else {
-          console.warn('⚠️ Error en sesión, continuando sin sesión:', error.message);
-          setUser(null);
+          console.warn('⚠️ Error en sesión:', errorMsg);
         }
-
+        setUser(null);
         setIsLoading(false);
         return;
       }
@@ -197,8 +197,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         console.log('ℹ️ No hay sesión activa');
         setUser(null);
       }
-    } catch (error: any) {
-      console.warn('⚠️ Error en autenticación:', error?.message || 'Unknown error');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn('⚠️ Error en autenticación:', errorMessage);
       setUser(null);
     } finally {
       console.log('✅ Verificación completada');
@@ -208,31 +209,59 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   useEffect(() => {
     if (!supabase) {
-      console.error('⚠️ Supabase no está inicializado');
+      console.warn('⚠️ Supabase no inicializado, omitiendo auth');
       setIsLoading(false);
       return;
     }
 
-    checkAuthStatus();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth event:', event);
-        if (session?.user) {
-          await loadUserProfile(session.user);
-          
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            console.log('✅ Usuario autenticado, redirigiendo a home...');
-            router.replace('/(tabs)');
-          }
-        } else {
+    let isMounted = true;
+    
+    const initAuth = async () => {
+      try {
+        await checkAuthStatus();
+      } catch (e) {
+        console.warn('⚠️ Error en checkAuthStatus:', e);
+        if (isMounted) {
           setUser(null);
+          setIsLoading(false);
         }
       }
-    );
+    };
+    
+    initAuth();
+
+    let authListener: { subscription: { unsubscribe: () => void } } | null = null;
+    
+    try {
+      const { data } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (!isMounted) return;
+          
+          console.log('Auth event:', event);
+          if (session?.user) {
+            await loadUserProfile(session.user);
+            
+            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              console.log('✅ Usuario autenticado, redirigiendo a home...');
+              router.replace('/(tabs)');
+            }
+          } else {
+            setUser(null);
+          }
+        }
+      );
+      authListener = data;
+    } catch (listenerError) {
+      console.warn('⚠️ Error configurando listener de auth:', listenerError);
+    }
 
     return () => {
-      authListener?.subscription?.unsubscribe();
+      isMounted = false;
+      try {
+        authListener?.subscription?.unsubscribe();
+      } catch {
+        // Ignore unsubscribe errors
+      }
     };
   }, [checkAuthStatus, loadUserProfile]);
 

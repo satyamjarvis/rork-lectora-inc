@@ -2,9 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import * as Linking from 'expo-linking';
-import * as Updates from 'expo-updates';
-import React, { useEffect, useState } from "react";
-import { Platform, StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import React, { useEffect, useCallback, useRef } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "@/providers/auth-provider";
@@ -82,244 +81,93 @@ function AppProviders({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ConfigErrorScreen() {
-  const missing = supabaseConfig.missingVariables;
-  const [isReloading, setIsReloading] = useState(false);
 
-  const handleReload = async () => {
-    console.log('🔄 Intentando recargar la aplicación...');
-    setIsReloading(true);
-    
-    try {
-      if (Platform.OS === 'web') {
-        globalThis?.location?.reload();
-        return;
-      }
-
-      // Try to reload the app using expo-updates
-      try {
-        console.log('🔄 Usando expo-updates para recargar...');
-        await Updates.reloadAsync();
-      } catch (updateError) {
-        console.log('⚠️ expo-updates no disponible, usando fallback:', updateError);
-        // If expo-updates fails (dev mode or not available), show alert
-        Alert.alert(
-          'Reinicio requerido',
-          'Por favor cierra y vuelve a abrir la aplicación para aplicar los cambios de configuración.',
-          [
-            { text: 'Entendido', style: 'default' }
-          ]
-        );
-      }
-    } catch (error) {
-      console.error('❌ Error al recargar:', error);
-      Alert.alert(
-        'Error',
-        'No se pudo recargar la aplicación. Por favor ciérrala y vuelve a abrirla manualmente.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsReloading(false);
-    }
-  };
-
-  return (
-    <View style={styles.configContainer} testID="config-error-screen">
-      <View style={styles.configCard} testID="config-error-card">
-        <Text style={styles.configTitle}>Configuración incompleta</Text>
-        <Text style={styles.configSubtitle}>
-          Agrega las variables de Supabase al build antes de enviar a revisión para evitar cierres inesperados al iniciar.
-        </Text>
-        <View style={styles.configList}>
-          {missing.map((item) => (
-            <Text key={item} style={styles.configListItem} testID={`config-missing-${item}`}>
-              • {item}
-            </Text>
-          ))}
-        </View>
-        <TouchableOpacity
-          style={[styles.reloadButton, isReloading && styles.reloadButtonDisabled]}
-          onPress={handleReload}
-          activeOpacity={0.85}
-          disabled={isReloading}
-          testID="config-retry-button"
-        >
-          {isReloading ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <Text style={styles.reloadButtonText}>Reintentar</Text>
-          )}
-        </TouchableOpacity>
-        <Text style={styles.configHelp}>
-          Revisa SUPABASE_SETUP.md para los pasos completos.
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  configContainer: {
-    flex: 1,
-    backgroundColor: '#020617',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  configCard: {
-    width: '100%',
-    maxWidth: 420,
-    borderRadius: 32,
-    backgroundColor: '#0F172A',
-    paddingVertical: 28,
-    paddingHorizontal: 32,
-    shadowColor: '#010409',
-    shadowOffset: { width: 0, height: 30 },
-    shadowOpacity: 0.35,
-    shadowRadius: 50,
-    elevation: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  configTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#F8FAFC',
-    marginBottom: 12,
-  },
-  configSubtitle: {
-    fontSize: 16,
-    color: '#E2E8F0',
-    lineHeight: 24,
-    marginBottom: 20,
-  },
-  configList: {
-    marginBottom: 24,
-    gap: 8,
-  },
-  configListItem: {
-    fontSize: 16,
-    color: '#FBBF24',
-    fontWeight: '600',
-  },
-  reloadButton: {
-    backgroundColor: '#2563EB',
-    borderRadius: 18,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    minHeight: 52,
-  },
-  reloadButtonDisabled: {
-    backgroundColor: '#4B7BEC',
-    opacity: 0.7,
-  },
-  reloadButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  configHelp: {
-    fontSize: 13,
-    color: '#93C5FD',
-    textAlign: 'center',
-  },
-});
 
 export default function RootLayout() {
-  const [appReady, setAppReady] = React.useState(false);
+  const appReadyRef = useRef(false);
 
   useEffect(() => {
     const prepare = async () => {
       try {
         console.log('🚀 Preparando app...');
-        await new Promise(resolve => setTimeout(resolve, 50));
+        console.log('🔧 Supabase configurado:', supabaseConfig.isConfigured);
+        await new Promise(resolve => setTimeout(resolve, 100));
       } catch (error) {
         console.error('Error preparando app:', error);
       } finally {
-        setAppReady(true);
+        appReadyRef.current = true;
+        try {
+          await new Promise(resolve => setTimeout(resolve, 300));
+          console.log('👋 Ocultando splash screen...');
+          await SplashScreen.hideAsync();
+          console.log('✅ Splash screen oculto');
+        } catch (splashError) {
+          console.warn('⚠️ Error ocultando splash:', splashError);
+        }
       }
     };
     
     prepare();
   }, []);
 
-  useEffect(() => {
-    if (appReady) {
-      const hideSplash = async () => {
-        try {
-          // Give a bit more time for layout to settle
-          await new Promise(resolve => setTimeout(resolve, 500));
-          console.log('👋 Ocultando splash screen...');
-          await SplashScreen.hideAsync();
-          console.log('✅ Splash screen oculto');
-        } catch (error) {
-          console.error('❌ Error ocultando splash screen:', error);
-        }
-      };
-      
-      hideSplash();
-    }
-  }, [appReady]);
-
-  useEffect(() => {
-    if (!supabaseConfig.isConfigured) {
+  const handleDeepLink = useCallback(async (url: string) => {
+    console.log('🔗 Deep link recibido:', url);
+    
+    if (Platform.OS === 'web') {
       return;
     }
 
-    const handleDeepLink = async (url: string) => {
-      console.log('🔗 Deep link recibido:', url);
-      
-      if (Platform.OS === 'web') {
-        return;
+    try {
+      const parsedUrl = Linking.parse(url);
+      try {
+        console.log('🔗 URL parseada:', JSON.stringify(parsedUrl, null, 2));
+      } catch {
+        console.log('🔗 URL parseada: [Error serializing]');
       }
 
-      try {
-        const parsedUrl = Linking.parse(url);
-        try {
-          console.log('🔗 URL parseada:', JSON.stringify(parsedUrl, null, 2));
-        } catch {
-          console.log('🔗 URL parseada: [Error serializing]');
-        }
-
-        if (parsedUrl.path?.includes('oauth/callback') || url.includes('access_token=')) {
-          console.log('🔐 Detectado callback de OAuth');
+      if (parsedUrl.path?.includes('oauth/callback') || url.includes('access_token=')) {
+        console.log('🔐 Detectado callback de OAuth');
+        
+        const hashIndex = url.indexOf('#');
+        if (hashIndex !== -1) {
+          const hash = url.substring(hashIndex + 1);
+          const params = new URLSearchParams(hash);
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
           
-          const hashIndex = url.indexOf('#');
-          if (hashIndex !== -1) {
-            const hash = url.substring(hashIndex + 1);
-            const params = new URLSearchParams(hash);
-            const accessToken = params.get('access_token');
-            const refreshToken = params.get('refresh_token');
+          console.log('🔑 Access token presente:', !!accessToken);
+          console.log('🔑 Refresh token presente:', !!refreshToken);
+          
+          if (accessToken && refreshToken) {
+            console.log('✅ Estableciendo sesión...');
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
             
-            console.log('🔑 Access token presente:', !!accessToken);
-            console.log('🔑 Refresh token presente:', !!refreshToken);
-            
-            if (accessToken && refreshToken) {
-              console.log('✅ Estableciendo sesión...');
-              const { data, error } = await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken,
-              });
-              
-              if (error) {
-                console.error('❌ Error al establecer sesión:', error);
-              } else {
-                console.log('✅ Sesión establecida exitosamente');
-                console.log('✅ Usuario:', data.user?.email);
-              }
+            if (error) {
+              console.error('❌ Error al establecer sesión:', error);
             } else {
-              console.warn('⚠️ No se encontraron tokens en la URL');
+              console.log('✅ Sesión establecida exitosamente');
+              console.log('✅ Usuario:', data.user?.email);
             }
           } else {
-            console.warn('⚠️ URL no contiene fragmento (#)');
+            console.warn('⚠️ No se encontraron tokens en la URL');
           }
+        } else {
+          console.warn('⚠️ URL no contiene fragmento (#)');
         }
-      } catch (error) {
-        console.error('❌ Error procesando deep link:', error);
       }
-    };
+    } catch (error) {
+      console.error('❌ Error procesando deep link:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!supabaseConfig.isConfigured) {
+      console.warn('⚠️ Supabase no configurado, deep links deshabilitados');
+      return;
+    }
 
     const subscription = Linking.addEventListener('url', (event) => {
       handleDeepLink(event.url);
@@ -335,15 +183,7 @@ export default function RootLayout() {
     return () => {
       subscription.remove();
     };
-  }, []);
-
-  if (!supabaseConfig.isConfigured) {
-    return (
-      <ErrorBoundary>
-        <ConfigErrorScreen />
-      </ErrorBoundary>
-    );
-  }
+  }, [handleDeepLink]);
 
   return (
     <ErrorBoundary>
