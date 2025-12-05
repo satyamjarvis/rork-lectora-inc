@@ -10,20 +10,18 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router, Stack } from "expo-router";
+import { Stack } from "expo-router";
 import { useTheme } from "@/providers/theme-provider";
 import { useArticles } from "@/providers/articles-provider";
 import { useLanguage } from "@/providers/language-provider";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { 
-  ArrowLeft, 
   FileText, 
   Printer,
   Download,
   Check,
   Folder as FolderIcon,
-  ChevronRight,
 } from "lucide-react-native";
 import { Article } from "@/types/article";
 

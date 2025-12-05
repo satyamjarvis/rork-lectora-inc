@@ -39,7 +39,6 @@ import {
   Award,
   ArrowLeft,
   UserX,
-  FileText,
   Printer
 } from "lucide-react-native";
 
