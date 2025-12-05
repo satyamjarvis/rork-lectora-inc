@@ -1,14 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_KEY ?? '';
+// Read environment variables with fallbacks
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_KEY || '';
+
+// Log for debugging in production
+console.log('🔧 Supabase config check...');
+console.log('🔗 URL present:', !!supabaseUrl);
+console.log('🔑 Key present:', !!supabaseAnonKey);
 
 const missingVariables: string[] = [];
-if (!supabaseUrl) {
+if (!supabaseUrl || supabaseUrl.length < 10) {
   missingVariables.push('EXPO_PUBLIC_SUPABASE_URL');
 }
-if (!supabaseAnonKey) {
+if (!supabaseAnonKey || supabaseAnonKey.length < 10) {
   missingVariables.push('EXPO_PUBLIC_SUPABASE_KEY');
 }
 
@@ -17,7 +23,6 @@ if (missingVariables.length > 0) {
   console.error('Variables faltantes:', missingVariables.join(', '));
 } else {
   console.log('✅ Supabase configurado correctamente');
-  console.log('🔗 URL:', supabaseUrl);
 }
 
 export const supabaseConfig = {

@@ -2,8 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import * as Linking from 'expo-linking';
-import React, { useEffect } from "react";
-import { Platform, StyleSheet, View, Text, TouchableOpacity } from "react-native";
+import * as Updates from 'expo-updates';
+import React, { useEffect, useState } from "react";
+import { Platform, StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider, useAuth } from "@/providers/auth-provider";
@@ -83,20 +84,43 @@ function AppProviders({ children }: { children: React.ReactNode }) {
 
 function ConfigErrorScreen() {
   const missing = supabaseConfig.missingVariables;
+  const [isReloading, setIsReloading] = useState(false);
 
-  const handleReload = () => {
-    if (Platform.OS === 'web') {
-      globalThis?.location?.reload();
-      return;
+  const handleReload = async () => {
+    console.log('🔄 Intentando recargar la aplicación...');
+    setIsReloading(true);
+    
+    try {
+      if (Platform.OS === 'web') {
+        globalThis?.location?.reload();
+        return;
+      }
+
+      // Try to reload the app using expo-updates
+      try {
+        console.log('🔄 Usando expo-updates para recargar...');
+        await Updates.reloadAsync();
+      } catch (updateError) {
+        console.log('⚠️ expo-updates no disponible, usando fallback:', updateError);
+        // If expo-updates fails (dev mode or not available), show alert
+        Alert.alert(
+          'Reinicio requerido',
+          'Por favor cierra y vuelve a abrir la aplicación para aplicar los cambios de configuración.',
+          [
+            { text: 'Entendido', style: 'default' }
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('❌ Error al recargar:', error);
+      Alert.alert(
+        'Error',
+        'No se pudo recargar la aplicación. Por favor ciérrala y vuelve a abrirla manualmente.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsReloading(false);
     }
-
-    SplashScreen.hideAsync()
-      .then(() => {
-        console.log('Splash oculto después de intentar reintentar configuración');
-      })
-      .catch((error) => {
-        console.error('No se pudo ocultar el splash:', error);
-      });
   };
 
   return (
@@ -114,12 +138,17 @@ function ConfigErrorScreen() {
           ))}
         </View>
         <TouchableOpacity
-          style={styles.reloadButton}
+          style={[styles.reloadButton, isReloading && styles.reloadButtonDisabled]}
           onPress={handleReload}
           activeOpacity={0.85}
+          disabled={isReloading}
           testID="config-retry-button"
         >
-          <Text style={styles.reloadButtonText}>Reintentar</Text>
+          {isReloading ? (
+            <ActivityIndicator color="#FFFFFF" size="small" />
+          ) : (
+            <Text style={styles.reloadButtonText}>Reintentar</Text>
+          )}
         </TouchableOpacity>
         <Text style={styles.configHelp}>
           Revisa SUPABASE_SETUP.md para los pasos completos.
@@ -178,7 +207,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     paddingVertical: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 12,
+    minHeight: 52,
+  },
+  reloadButtonDisabled: {
+    backgroundColor: '#4B7BEC',
+    opacity: 0.7,
   },
   reloadButtonText: {
     color: '#FFFFFF',
@@ -244,7 +279,7 @@ export default function RootLayout() {
         const parsedUrl = Linking.parse(url);
         try {
           console.log('🔗 URL parseada:', JSON.stringify(parsedUrl, null, 2));
-        } catch (e) {
+        } catch {
           console.log('🔗 URL parseada: [Error serializing]');
         }
 

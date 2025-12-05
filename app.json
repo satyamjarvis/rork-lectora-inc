@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lectora Inc",
     "slug": "lectora",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -62,6 +62,19 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "updates": {
+      "enabled": true,
+      "url": "<UNKNOWN>",
+      "requestHeaders": {},
+      "checkAutomatically": "ALWAYS",
+      "fallbackToCacheTimeout": 0,
+      "useEmbeddedUpdate": true,
+      "codeSigningCertificate": "<UNKNOWN>",
+      "codeSigningMetadata": "<UNKNOWN>",
+      "assetPatternsToBeBundled": [],
+      "disableAntiBrickingMeasures": false
+    },
+    "runtimeVersion": "<UNKNOWN>"
   }
 }

@@ -1,5 +1,6 @@
 import React, { Component, ReactNode } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
+import * as Updates from 'expo-updates';
 
 interface Props {
   children: ReactNode;
@@ -9,6 +10,7 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: React.ErrorInfo | null;
+  isReloading: boolean;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -18,6 +20,7 @@ export class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
+      isReloading: false,
     };
   }
 
@@ -35,12 +38,38 @@ export class ErrorBoundary extends Component<Props, State> {
     });
   }
 
-  handleReload = () => {
-    this.setState({
-      hasError: false,
-      error: null,
-      errorInfo: null,
-    });
+  handleReload = async () => {
+    this.setState({ isReloading: true });
+    
+    try {
+      if (Platform.OS === 'web') {
+        globalThis?.location?.reload();
+        return;
+      }
+
+      // Try expo-updates first for production builds
+      try {
+        await Updates.reloadAsync();
+      } catch (updateError) {
+        console.log('expo-updates reload failed, trying state reset:', updateError);
+        // Fallback: reset error boundary state
+        this.setState({
+          hasError: false,
+          error: null,
+          errorInfo: null,
+          isReloading: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error during reload:', error);
+      // Final fallback: just reset state
+      this.setState({
+        hasError: false,
+        error: null,
+        errorInfo: null,
+        isReloading: false,
+      });
+    }
   };
 
   render() {
@@ -54,10 +83,16 @@ export class ErrorBoundary extends Component<Props, State> {
             </Text>
             
             <TouchableOpacity 
-              style={styles.button} 
+              style={[styles.button, this.state.isReloading && styles.buttonDisabled]} 
               onPress={this.handleReload}
+              disabled={this.state.isReloading}
+              activeOpacity={0.8}
             >
-              <Text style={styles.buttonText}>Reintentar</Text>
+              {this.state.isReloading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.buttonText}>Reintentar</Text>
+              )}
             </TouchableOpacity>
 
             <View style={styles.errorDetails}>
@@ -109,6 +144,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     marginBottom: 24,
+    minWidth: 120,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonDisabled: {
+    backgroundColor: '#4A9AFF',
+    opacity: 0.7,
   },
   buttonText: {
     color: '#fff',
