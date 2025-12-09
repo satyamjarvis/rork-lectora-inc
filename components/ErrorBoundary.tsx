@@ -4,6 +4,12 @@ import * as Updates from 'expo-updates';
 
 interface Props {
   children: ReactNode;
+  translations?: {
+    title: string;
+    message: string;
+    retry: string;
+    technicalDetails: string;
+  };
 }
 
 interface State {
@@ -29,8 +35,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('🔴 Error capturado por Error Boundary:', error);
-    console.error('🔴 Info del error:', errorInfo);
+    if (__DEV__) {
+      console.error('🔴 Error capturado por Error Boundary:', error);
+      console.error('🔴 Info del error:', errorInfo);
+    }
     
     this.setState({
       error,
@@ -51,7 +59,9 @@ export class ErrorBoundary extends Component<Props, State> {
       try {
         await Updates.reloadAsync();
       } catch (updateError) {
-        console.log('expo-updates reload failed, trying state reset:', updateError);
+        if (__DEV__) {
+          console.log('expo-updates reload failed, trying state reset:', updateError);
+        }
         // Fallback: reset error boundary state
         this.setState({
           hasError: false,
@@ -61,7 +71,9 @@ export class ErrorBoundary extends Component<Props, State> {
         });
       }
     } catch (error) {
-      console.error('Error during reload:', error);
+      if (__DEV__) {
+        console.error('Error during reload:', error);
+      }
       // Final fallback: just reset state
       this.setState({
         hasError: false,
@@ -74,12 +86,19 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const t = this.props.translations || {
+        title: 'Something went wrong',
+        message: 'The app encountered an unexpected error. Please try again.',
+        retry: 'Retry',
+        technicalDetails: 'Technical details:',
+      };
+
       return (
         <View style={styles.container}>
           <ScrollView contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.title}>Algo salió mal</Text>
+            <Text style={styles.title}>{t.title}</Text>
             <Text style={styles.message}>
-              La aplicación encontró un error inesperado. Por favor intenta de nuevo.
+              {t.message}
             </Text>
             
             <TouchableOpacity 
@@ -87,25 +106,29 @@ export class ErrorBoundary extends Component<Props, State> {
               onPress={this.handleReload}
               disabled={this.state.isReloading}
               activeOpacity={0.8}
+              accessibilityLabel={t.retry}
+              accessibilityRole="button"
             >
               {this.state.isReloading ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={styles.buttonText}>Reintentar</Text>
+                <Text style={styles.buttonText}>{t.retry}</Text>
               )}
             </TouchableOpacity>
 
-            <View style={styles.errorDetails}>
-              <Text style={styles.errorTitle}>Detalles técnicos:</Text>
-              <Text style={styles.errorText}>
-                {this.state.error?.toString()}
-              </Text>
-              {this.state.errorInfo && (
-                <Text style={styles.errorStack}>
-                  {this.state.errorInfo.componentStack}
+            {__DEV__ && (
+              <View style={styles.errorDetails}>
+                <Text style={styles.errorTitle}>{t.technicalDetails}</Text>
+                <Text style={styles.errorText}>
+                  {this.state.error?.toString()}
                 </Text>
-              )}
-            </View>
+                {this.state.errorInfo && (
+                  <Text style={styles.errorStack}>
+                    {this.state.errorInfo.componentStack}
+                  </Text>
+                )}
+              </View>
+            )}
           </ScrollView>
         </View>
       );

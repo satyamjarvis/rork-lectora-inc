@@ -39,7 +39,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   }, []);
 
   const handleProfilesTableMissing = useCallback((supabaseUser: SupabaseUser) => {
-    console.warn('⚠️ Tabla profiles no disponible. Generando perfil local.');
+    if (__DEV__) {
+      console.warn('⚠️ Tabla profiles no disponible. Generando perfil local.');
+    }
     setIsProfilesTableAvailable(false);
     setUser(buildFallbackUser(supabaseUser));
     setPendingVerification(null);

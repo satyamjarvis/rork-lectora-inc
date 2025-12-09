@@ -14,12 +14,12 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "app.rork.lectora",
       "infoPlist": {
-        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
-        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
-        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos"
+        "NSCameraUsageDescription": "Lectora needs access to your camera to capture images of text that you want to transcribe and save as articles.",
+        "NSMicrophoneUsageDescription": "Lectora needs access to your microphone for audio transcription features when capturing images.",
+        "NSPhotoLibraryUsageDescription": "Lectora needs access to your photo library to let you select images to transcribe into articles."
       }
     },
     "android": {
@@ -48,15 +48,15 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "cameraPermission": "Lectora needs access to your camera to capture images of text that you want to transcribe and save as articles.",
+          "microphonePermission": "Lectora needs access to your microphone for audio transcription features when capturing images.",
           "recordAudioAndroid": true
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "The app accesses your photos to let you share them with your friends."
+          "photosPermission": "Lectora needs access to your photo library to let you select images to transcribe into articles."
         }
       ]
     ],
@@ -65,16 +65,8 @@
     },
     "updates": {
       "enabled": true,
-      "url": "<UNKNOWN>",
-      "requestHeaders": {},
-      "checkAutomatically": "ALWAYS",
-      "fallbackToCacheTimeout": 0,
-      "useEmbeddedUpdate": true,
-      "codeSigningCertificate": "<UNKNOWN>",
-      "codeSigningMetadata": "<UNKNOWN>",
-      "assetPatternsToBeBundled": [],
-      "disableAntiBrickingMeasures": false
-    },
-    "runtimeVersion": "<UNKNOWN>"
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }

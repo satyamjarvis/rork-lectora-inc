@@ -22,9 +22,11 @@ const getEnvVar = (key: string): string => {
 const supabaseUrl = getEnvVar('EXPO_PUBLIC_SUPABASE_URL');
 const supabaseAnonKey = getEnvVar('EXPO_PUBLIC_SUPABASE_KEY');
 
-console.log('🔧 Supabase config check...');
-console.log('🔗 URL:', supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'NOT SET');
-console.log('🔑 Key:', supabaseAnonKey ? 'SET (' + supabaseAnonKey.length + ' chars)' : 'NOT SET');
+if (__DEV__) {
+  console.log('🔧 Supabase config check...');
+  console.log('🔗 URL:', supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'NOT SET');
+  console.log('🔑 Key:', supabaseAnonKey ? 'SET (' + supabaseAnonKey.length + ' chars)' : 'NOT SET');
+}
 
 const isValidUrl = (url: string): boolean => {
   try {
@@ -51,11 +53,13 @@ if (!keyValid) {
   missingVariables.push('EXPO_PUBLIC_SUPABASE_KEY');
 }
 
-if (missingVariables.length > 0) {
-  console.warn('⚠️ Supabase config issues detected');
-  console.warn('Variables con problemas:', missingVariables.join(', '));
-} else {
-  console.log('✅ Supabase configurado correctamente');
+if (__DEV__) {
+  if (missingVariables.length > 0) {
+    console.warn('⚠️ Supabase config issues detected');
+    console.warn('Variables con problemas:', missingVariables.join(', '));
+  } else {
+    console.log('✅ Supabase configurado correctamente');
+  }
 }
 
 export const supabaseConfig = {
