@@ -6,7 +6,9 @@
     "start": "bunx rork start -p p0ecsl4uvf6qmo39m8iox --tunnel",
     "start-web": "bunx rork start -p p0ecsl4uvf6qmo39m8iox --web --tunnel",
     "start-web-dev": "DEBUG=expo* bunx rork start -p p0ecsl4uvf6qmo39m8iox --web --tunnel",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@ai-sdk/react": "^2.0.89",
@@ -66,6 +68,7 @@
     "@babel/core": "^7.25.2",
     "@expo/ngrok": "^4.1.0",
     "@types/react": "~19.1.10",
+    "dotenv": "^17.2.3",
     "eslint": "9.31.0",
     "eslint-config-expo": "9.2.0",
     "typescript": "~5.9.2"

@@ -1,18 +1,37 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
 
 const getEnvVar = (key: string): string => {
   try {
+    // Try process.env first (works in Expo SDK 50+)
     if (typeof process !== 'undefined' && process.env && process.env[key]) {
-      return process.env[key] || '';
+      const value = process.env[key];
+      if (value) return value;
     }
+    
+    // Try globalThis.process.env
     const g = globalThis as Record<string, unknown>;
     if (g.process && typeof g.process === 'object') {
       const proc = g.process as { env?: Record<string, string> };
       if (proc.env && proc.env[key]) {
-        return proc.env[key] || '';
+        const value = proc.env[key];
+        if (value) return value;
       }
     }
+    
+    // Try Constants.expoConfig.extra (Expo's way)
+    if (Constants.expoConfig?.extra && Constants.expoConfig.extra[key]) {
+      const value = Constants.expoConfig.extra[key] as string;
+      if (value) return value;
+    }
+    
+    // Try Constants.manifest?.extra (legacy Expo)
+    if (Constants.manifest?.extra && Constants.manifest.extra[key]) {
+      const value = Constants.manifest.extra[key] as string;
+      if (value) return value;
+    }
+    
     return '';
   } catch {
     return '';
@@ -26,6 +45,16 @@ if (__DEV__) {
   console.log('🔧 Supabase config check...');
   console.log('🔗 URL:', supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'NOT SET');
   console.log('🔑 Key:', supabaseAnonKey ? 'SET (' + supabaseAnonKey.length + ' chars)' : 'NOT SET');
+  console.log('🔍 process.env check:', {
+    hasProcess: typeof process !== 'undefined',
+    hasEnv: typeof process !== 'undefined' && !!process.env,
+    urlInEnv: typeof process !== 'undefined' && process.env ? !!process.env.EXPO_PUBLIC_SUPABASE_URL : false,
+    keyInEnv: typeof process !== 'undefined' && process.env ? !!process.env.EXPO_PUBLIC_SUPABASE_KEY : false,
+  });
+  console.log('🔍 Constants check:', {
+    hasExpoConfig: !!Constants.expoConfig,
+    hasExtra: !!Constants.expoConfig?.extra,
+  });
 }
 
 const isValidUrl = (url: string): boolean => {
@@ -311,3 +340,4 @@ export interface Database {
     };
   };
 }
+
