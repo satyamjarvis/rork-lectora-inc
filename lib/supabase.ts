@@ -1,59 +1,26 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const getEnvVar = (key: string): string => {
-  try {
-    if (typeof process !== 'undefined' && process.env && process.env[key]) {
-      return process.env[key] || '';
-    }
-    const g = globalThis as Record<string, unknown>;
-    if (g.process && typeof g.process === 'object') {
-      const proc = g.process as { env?: Record<string, string> };
-      if (proc.env && proc.env[key]) {
-        return proc.env[key] || '';
-      }
-    }
-    return '';
-  } catch {
-    return '';
-  }
-};
+// Read environment variables with fallbacks
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_KEY || '';
 
-const supabaseUrl = getEnvVar('EXPO_PUBLIC_SUPABASE_URL');
-const supabaseAnonKey = getEnvVar('EXPO_PUBLIC_SUPABASE_KEY');
-
+// Log for debugging in production
 console.log('🔧 Supabase config check...');
-console.log('🔗 URL:', supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'NOT SET');
-console.log('🔑 Key:', supabaseAnonKey ? 'SET (' + supabaseAnonKey.length + ' chars)' : 'NOT SET');
-
-const isValidUrl = (url: string): boolean => {
-  try {
-    if (!url || url.length < 10) return false;
-    const parsed = new URL(url);
-    return parsed.protocol === 'https:' && parsed.hostname.includes('supabase');
-  } catch {
-    return false;
-  }
-};
-
-const isValidKey = (key: string): boolean => {
-  return !!key && key.length > 20 && key.includes('.');
-};
-
-const urlValid = isValidUrl(supabaseUrl);
-const keyValid = isValidKey(supabaseAnonKey);
+console.log('🔗 URL present:', !!supabaseUrl);
+console.log('🔑 Key present:', !!supabaseAnonKey);
 
 const missingVariables: string[] = [];
-if (!urlValid) {
+if (!supabaseUrl || supabaseUrl.length < 10) {
   missingVariables.push('EXPO_PUBLIC_SUPABASE_URL');
 }
-if (!keyValid) {
+if (!supabaseAnonKey || supabaseAnonKey.length < 10) {
   missingVariables.push('EXPO_PUBLIC_SUPABASE_KEY');
 }
 
 if (missingVariables.length > 0) {
-  console.warn('⚠️ Supabase config issues detected');
-  console.warn('Variables con problemas:', missingVariables.join(', '));
+  console.error('⚠️ Missing Supabase environment variables');
+  console.error('Variables faltantes:', missingVariables.join(', '));
 } else {
   console.log('✅ Supabase configurado correctamente');
 }
@@ -61,8 +28,6 @@ if (missingVariables.length > 0) {
 export const supabaseConfig = {
   isConfigured: missingVariables.length === 0,
   missingVariables,
-  urlValid,
-  keyValid,
 };
 
 const safeUrl = supabaseUrl || 'https://placeholder.supabase.co';

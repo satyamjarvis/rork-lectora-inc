@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import { router } from "expo-router";
 import { useAuth } from "@/providers/auth-provider";
 import { useTheme } from "@/providers/theme-provider";
 import { useLanguage } from "@/providers/language-provider";
-import { Eye, EyeOff, WifiOff, RefreshCw } from "lucide-react-native";
+import { Eye, EyeOff } from "lucide-react-native";
 
 export default function SignupScreen() {
   const { signUp } = useAuth();
@@ -30,25 +30,6 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-
-  const [isNetworkError, setIsNetworkError] = useState(false);
-
-  const checkNetworkConnectivity = useCallback(async (): Promise<boolean> => {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
-      const response = await fetch('https://www.google.com/generate_204', {
-        method: 'HEAD',
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      return response.ok || response.status === 204;
-    } catch {
-      return false;
-    }
-  }, []);
 
   const handleSignup = async () => {
     if (!name || !email || !password || !confirmPassword) {
@@ -66,29 +47,10 @@ export default function SignupScreen() {
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError(t.auth.signup.invalidEmail || "El correo electrónico no es válido");
-      return;
-    }
-
     setError("");
-    setIsNetworkError(false);
     setLoading(true);
     
     try {
-      console.log('📱 Verificando conexión antes de registro...');
-      const hasNetwork = await checkNetworkConnectivity();
-      
-      if (!hasNetwork) {
-        console.log('❌ Sin conexión a internet');
-        setIsNetworkError(true);
-        setError(t.auth.signup.networkError || "Sin conexión a internet. Verifica tu conexión e intenta de nuevo.");
-        setLoading(false);
-        return;
-      }
-      
-      console.log('✅ Conexión verificada, procediendo con registro...');
       await signUp(email, password, name);
       setSuccess(true);
       
@@ -99,30 +61,9 @@ export default function SignupScreen() {
         });
       }, 1500);
     } catch (err: any) {
-      console.error('❌ Error en signup:', err);
-      
-      const errorMessage = err?.message || "Error al crear la cuenta";
-      
-      if (errorMessage.toLowerCase().includes('network') || 
-          errorMessage.toLowerCase().includes('conexión') ||
-          errorMessage.toLowerCase().includes('internet') ||
-          errorMessage.toLowerCase().includes('fetch') ||
-          errorMessage.toLowerCase().includes('timeout')) {
-        setIsNetworkError(true);
-        setError(t.auth.signup.networkError || "Error de conexión. Verifica tu internet e intenta de nuevo.");
-      } else {
-        setIsNetworkError(false);
-        setError(errorMessage);
-      }
-      
+      setError(err.message || "Error al crear la cuenta");
       setLoading(false);
     }
-  };
-
-  const handleRetry = () => {
-    setError("");
-    setIsNetworkError(false);
-    handleSignup();
   };
 
   const styles = createStyles(theme);
@@ -226,24 +167,7 @@ export default function SignupScreen() {
               </View>
             </View>
 
-            {error ? (
-              <View style={styles.errorContainer}>
-                {isNetworkError && <WifiOff size={20} color={theme.colors.error} style={styles.errorIcon} />}
-                <Text style={styles.error}>{error}</Text>
-                {isNetworkError && (
-                  <TouchableOpacity 
-                    style={styles.retryButton} 
-                    onPress={handleRetry}
-                    disabled={loading}
-                  >
-                    <RefreshCw size={16} color={theme.colors.primary} />
-                    <Text style={styles.retryText}>
-                      {t.auth.signup.retry || "Reintentar"}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ) : null}
+            {error ? <Text style={styles.error}>{error}</Text> : null}
             {success ? (
               <View style={styles.successContainer}>
                 <Text style={styles.successText}>{t.auth.signup.accountCreated}</Text>
@@ -355,35 +279,10 @@ const createStyles = (theme: any) => StyleSheet.create({
     fontSize: 16,
     fontWeight: "600" as const,
   },
-  errorContainer: {
-    backgroundColor: `${theme.colors.error}15`,
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 8,
-    alignItems: "center" as const,
-  },
-  errorIcon: {
-    marginBottom: 8,
-  },
   error: {
     color: theme.colors.error,
     fontSize: 14,
-    textAlign: "center" as const,
-  },
-  retryButton: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: theme.colors.inputBackground,
-    borderRadius: 8,
-    gap: 6,
-  },
-  retryText: {
-    color: theme.colors.primary,
-    fontSize: 14,
-    fontWeight: "600" as const,
+    marginTop: 8,
   },
   successContainer: {
     backgroundColor: theme.colors.success || "#10B981",

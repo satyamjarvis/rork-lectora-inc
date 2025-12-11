@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import { useTheme } from "@/providers/theme-provider";
 import { useArticles } from "@/providers/articles-provider";
 import { useLanguage } from "@/providers/language-provider";
-import { Plus, FolderOpen, ChevronRight } from "lucide-react-native";
+import { Plus, FolderOpen, ChevronRight, Edit2, Trash2 } from "lucide-react-native";
 
 export default function FoldersScreen() {
   const { theme } = useTheme();

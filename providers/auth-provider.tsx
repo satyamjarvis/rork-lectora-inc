@@ -144,15 +144,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const checkAuthStatus = useCallback(async () => {
     try {
       if (!supabase) {
-        console.warn('⚠️ Supabase cliente no disponible, continuando sin autenticación');
-        setUser(null);
+        console.error('⚠️ Supabase no está inicializado');
         setIsLoading(false);
         return;
       }
       
       console.log('🔍 Verificando estado de autenticación...');
       const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Auth check timeout')), 5000)
+        setTimeout(() => reject(new Error('Auth check timeout')), 8000)
       );
       
       const sessionPromise = supabase.auth.getSession();
@@ -167,25 +166,26 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         return;
       }
 
-      const { data, error } = result as { data: { session: { user: SupabaseUser } | null }; error: { message?: string } | null };
+      const { data, error } = result as any;
       const session = data?.session;
 
       if (error) {
-        const errorMsg = error.message || '';
-        if (errorMsg.includes('Refresh Token') || errorMsg.includes('Invalid') || errorMsg.includes('Network')) {
-          console.log('🗑️ Sesión inválida o error de red, limpiando estado');
+        if (error.message?.includes('Refresh Token') || error.message?.includes('Invalid')) {
+          console.log('🗑️ Sesión inválida detectada, limpiando estado');
           try {
             await Promise.race([
               supabase.auth.signOut(),
-              new Promise((resolve) => setTimeout(resolve, 1500))
+              new Promise((resolve) => setTimeout(resolve, 2000))
             ]);
-          } catch {
-            console.warn('⚠️ No se pudo limpiar la sesión');
+          } catch (e) {
+            console.warn('⚠️ Error al limpiar sesión:', e);
           }
+          setUser(null);
         } else {
-          console.warn('⚠️ Error en sesión:', errorMsg);
+          console.warn('⚠️ Error en sesión, continuando sin sesión:', error.message);
+          setUser(null);
         }
-        setUser(null);
+
         setIsLoading(false);
         return;
       }
@@ -197,9 +197,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         console.log('ℹ️ No hay sesión activa');
         setUser(null);
       }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.warn('⚠️ Error en autenticación:', errorMessage);
+    } catch (error: any) {
+      console.warn('⚠️ Error en autenticación:', error?.message || 'Unknown error');
       setUser(null);
     } finally {
       console.log('✅ Verificación completada');
@@ -209,59 +208,31 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   useEffect(() => {
     if (!supabase) {
-      console.warn('⚠️ Supabase no inicializado, omitiendo auth');
+      console.error('⚠️ Supabase no está inicializado');
       setIsLoading(false);
       return;
     }
 
-    let isMounted = true;
-    
-    const initAuth = async () => {
-      try {
-        await checkAuthStatus();
-      } catch (e) {
-        console.warn('⚠️ Error en checkAuthStatus:', e);
-        if (isMounted) {
+    checkAuthStatus();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth event:', event);
+        if (session?.user) {
+          await loadUserProfile(session.user);
+          
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            console.log('✅ Usuario autenticado, redirigiendo a home...');
+            router.replace('/(tabs)');
+          }
+        } else {
           setUser(null);
-          setIsLoading(false);
         }
       }
-    };
-    
-    initAuth();
-
-    let authListener: { subscription: { unsubscribe: () => void } } | null = null;
-    
-    try {
-      const { data } = supabase.auth.onAuthStateChange(
-        async (event, session) => {
-          if (!isMounted) return;
-          
-          console.log('Auth event:', event);
-          if (session?.user) {
-            await loadUserProfile(session.user);
-            
-            if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-              console.log('✅ Usuario autenticado, redirigiendo a home...');
-              router.replace('/(tabs)');
-            }
-          } else {
-            setUser(null);
-          }
-        }
-      );
-      authListener = data;
-    } catch (listenerError) {
-      console.warn('⚠️ Error configurando listener de auth:', listenerError);
-    }
+    );
 
     return () => {
-      isMounted = false;
-      try {
-        authListener?.subscription?.unsubscribe();
-      } catch {
-        // Ignore unsubscribe errors
-      }
+      authListener?.subscription?.unsubscribe();
     };
   }, [checkAuthStatus, loadUserProfile]);
 
@@ -287,9 +258,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
     try {
-      console.log('📝 Iniciando registro de usuario...');
-      
-      const signUpPromise = supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -299,55 +268,13 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           },
         },
       });
-      
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('TIMEOUT')), 15000)
-      );
-      
-      let result;
-      try {
-        result = await Promise.race([signUpPromise, timeoutPromise]);
-      } catch (raceError: any) {
-        if (raceError?.message === 'TIMEOUT') {
-          console.error('⏱️ Timeout durante el registro');
-          throw new Error('La solicitud tardó demasiado. Verifica tu conexión a internet e intenta de nuevo.');
-        }
-        throw raceError;
-      }
-      
-      const { data, error } = result;
 
-      if (error) {
-        console.error('❌ Error de Supabase en signup:', error);
-        
-        if (error.message?.toLowerCase().includes('network') || 
-            error.message?.toLowerCase().includes('fetch') ||
-            error.message?.toLowerCase().includes('connection')) {
-          throw new Error('Error de conexión. Verifica tu internet e intenta de nuevo.');
-        }
-        
-        if (error.message?.toLowerCase().includes('already registered') ||
-            error.message?.toLowerCase().includes('user already exists')) {
-          throw new Error('Este correo ya está registrado. Intenta iniciar sesión.');
-        }
-        
-        if (error.message?.toLowerCase().includes('invalid email')) {
-          throw new Error('El correo electrónico no es válido.');
-        }
-        
-        if (error.message?.toLowerCase().includes('password')) {
-          throw new Error('La contraseña debe tener al menos 6 caracteres.');
-        }
-        
-        throw new Error(error.message || 'Error al crear la cuenta. Intenta de nuevo.');
-      }
+      if (error) throw error;
 
-      if (!data?.user) {
+      if (!data.user) {
         throw new Error('No se pudo completar el registro. Intenta de nuevo.');
       }
 
-      console.log('✅ Usuario creado exitosamente:', data.user.id);
-      
       const hasActiveSession = Boolean(data.session?.access_token);
 
       if (!hasActiveSession) {
@@ -363,17 +290,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       await loadUserProfile(data.user);
       setPendingVerification(null);
     } catch (error: any) {
-      console.error('❌ Sign up error completo:', error);
-      console.error('❌ Mensaje:', error?.message);
-      
-      if (error?.message?.includes('Network request failed') || 
-          error?.message?.includes('network') ||
-          error?.message?.includes('Failed to fetch') ||
-          error?.name === 'TypeError') {
-        throw new Error('Error de conexión. Verifica tu internet e intenta de nuevo.');
-      }
-      
-      throw new Error(error?.message || 'Error al registrarse. Por favor intenta de nuevo.');
+      console.error('Sign up error:', error);
+      throw new Error(error.message || 'Error al registrarse');
     }
   }, [loadUserProfile]);
 
