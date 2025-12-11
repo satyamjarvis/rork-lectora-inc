@@ -288,42 +288,102 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   }, [loadUserProfile]);
 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: undefined,
-          data: {
-            name,
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔐 Intento de registro ${attempt}/${maxRetries}...`);
+        
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: undefined,
+            data: {
+              name,
+            },
           },
-        },
-      });
+        });
 
-      if (error) throw error;
+        if (error) {
+          console.error(`❌ Error en intento ${attempt}:`, error.message);
+          
+          // Check for specific error types
+          const errorMessage = error.message?.toLowerCase() || '';
+          
+          if (errorMessage.includes('user already registered') || 
+              errorMessage.includes('already exists') ||
+              errorMessage.includes('already been registered')) {
+            throw new Error('Este correo ya está registrado. Intenta iniciar sesión.');
+          }
+          
+          if (errorMessage.includes('invalid email') || errorMessage.includes('email')) {
+            throw new Error('El correo electrónico no es válido.');
+          }
+          
+          if (errorMessage.includes('password') && errorMessage.includes('weak')) {
+            throw new Error('La contraseña es muy débil. Usa al menos 6 caracteres.');
+          }
+          
+          // Network errors - retry
+          if (errorMessage.includes('network') || 
+              errorMessage.includes('fetch') ||
+              errorMessage.includes('timeout') ||
+              errorMessage.includes('failed')) {
+            lastError = new Error('Error de conexión. Verificando tu red...');
+            if (attempt < maxRetries) {
+              console.log(`⏳ Reintentando en ${attempt * 1000}ms...`);
+              await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+              continue;
+            }
+          }
+          
+          throw error;
+        }
 
-      if (!data.user) {
-        throw new Error('No se pudo completar el registro. Intenta de nuevo.');
+        if (!data.user) {
+          throw new Error('No se pudo completar el registro. Intenta de nuevo.');
+        }
+
+        const hasActiveSession = Boolean(data.session?.access_token);
+
+        if (!hasActiveSession) {
+          console.log('🔐 Registro requiere verificación de correo antes de crear el perfil. Se creará automáticamente después de confirmar.');
+          setPendingVerification({ email, password, name });
+          return;
+        }
+
+        console.log('✅ Usuario registrado, esperando creación automática de perfil...');
+
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        await loadUserProfile(data.user);
+        setPendingVerification(null);
+        return; // Success - exit the retry loop
+        
+      } catch (error: any) {
+        console.error(`Sign up error (attempt ${attempt}):`, error);
+        lastError = error;
+        
+        // Don't retry for non-network errors
+        const errorMessage = error.message?.toLowerCase() || '';
+        if (!errorMessage.includes('network') && 
+            !errorMessage.includes('fetch') &&
+            !errorMessage.includes('timeout') &&
+            !errorMessage.includes('failed')) {
+          throw new Error(error.message || 'Error al registrarse');
+        }
+        
+        if (attempt < maxRetries) {
+          console.log(`⏳ Reintentando en ${attempt * 1000}ms...`);
+          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+        }
       }
-
-      const hasActiveSession = Boolean(data.session?.access_token);
-
-      if (!hasActiveSession) {
-        console.log('🔐 Registro requiere verificación de correo antes de crear el perfil. Se creará automáticamente después de confirmar.');
-        setPendingVerification({ email, password, name });
-        return;
-      }
-
-      console.log('✅ Usuario registrado, esperando creación automática de perfil...');
-
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      await loadUserProfile(data.user);
-      setPendingVerification(null);
-    } catch (error: any) {
-      console.error('Sign up error:', error);
-      throw new Error(error.message || 'Error al registrarse');
     }
+    
+    // All retries failed
+    throw new Error(lastError?.message || 'Error de conexión. Verifica tu conexión a internet e intenta de nuevo.');
   }, [loadUserProfile]);
 
   const signOut = useCallback(async () => {

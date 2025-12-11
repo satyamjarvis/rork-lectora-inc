@@ -37,6 +37,12 @@ export default function SignupScreen() {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Por favor ingresa un correo electrónico válido");
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError(t.auth.signup.passwordsDontMatch);
       return;
@@ -51,7 +57,13 @@ export default function SignupScreen() {
     setLoading(true);
     
     try {
+      console.log('📝 Iniciando proceso de registro...');
+      console.log('📧 Email:', email);
+      console.log('👤 Nombre:', name);
+      
       await signUp(email, password, name);
+      
+      console.log('✅ Registro exitoso');
       setSuccess(true);
       
       setTimeout(() => {
@@ -61,7 +73,27 @@ export default function SignupScreen() {
         });
       }, 1500);
     } catch (err: any) {
-      setError(err.message || "Error al crear la cuenta");
+      console.error('❌ Error en signup:', err);
+      
+      let errorMessage = "Error al crear la cuenta";
+      
+      if (err.message) {
+        const msg = err.message.toLowerCase();
+        
+        if (msg.includes('network') || msg.includes('fetch') || msg.includes('failed') || msg.includes('conexión')) {
+          errorMessage = "Error de conexión. Por favor verifica tu internet e intenta de nuevo.";
+        } else if (msg.includes('already') || msg.includes('registrado')) {
+          errorMessage = "Este correo ya está registrado. Intenta iniciar sesión.";
+        } else if (msg.includes('invalid') && msg.includes('email')) {
+          errorMessage = "El correo electrónico no es válido.";
+        } else if (msg.includes('password') && msg.includes('weak')) {
+          errorMessage = "La contraseña es muy débil. Usa al menos 6 caracteres.";
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
       setLoading(false);
     }
   };

@@ -66,7 +66,15 @@
     "updates": {
       "enabled": true,
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
-    }
+      "fallbackToCacheTimeout": 0,
+      "url": "<UNKNOWN>",
+      "requestHeaders": {},
+      "useEmbeddedUpdate": true,
+      "codeSigningCertificate": "<UNKNOWN>",
+      "codeSigningMetadata": "<UNKNOWN>",
+      "assetPatternsToBeBundled": [],
+      "disableAntiBrickingMeasures": false
+    },
+    "runtimeVersion": "<UNKNOWN>"
   }
 }
