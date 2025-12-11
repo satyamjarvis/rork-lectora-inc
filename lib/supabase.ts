@@ -1,14 +1,30 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_KEY || '';
+const getEnvVar = (key: string): string => {
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      return process.env[key] || '';
+    }
+    const g = globalThis as Record<string, unknown>;
+    if (g.process && typeof g.process === 'object') {
+      const proc = g.process as { env?: Record<string, string> };
+      if (proc.env && proc.env[key]) {
+        return proc.env[key] || '';
+      }
+    }
+    return '';
+  } catch {
+    return '';
+  }
+};
 
-if (__DEV__) {
-  console.log('🔧 Supabase config check...');
-  console.log('🔗 URL:', supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'NOT SET');
-  console.log('🔑 Key:', supabaseAnonKey ? 'SET (' + supabaseAnonKey.length + ' chars)' : 'NOT SET');
-}
+const supabaseUrl = getEnvVar('EXPO_PUBLIC_SUPABASE_URL');
+const supabaseAnonKey = getEnvVar('EXPO_PUBLIC_SUPABASE_KEY');
+
+console.log('🔧 Supabase config check...');
+console.log('🔗 URL:', supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'NOT SET');
+console.log('🔑 Key:', supabaseAnonKey ? 'SET (' + supabaseAnonKey.length + ' chars)' : 'NOT SET');
 
 const isValidUrl = (url: string): boolean => {
   try {
@@ -35,13 +51,11 @@ if (!keyValid) {
   missingVariables.push('EXPO_PUBLIC_SUPABASE_KEY');
 }
 
-if (__DEV__) {
-  if (missingVariables.length > 0) {
-    console.warn('⚠️ Supabase config issues detected');
-    console.warn('Variables con problemas:', missingVariables.join(', '));
-  } else {
-    console.log('✅ Supabase configurado correctamente');
-  }
+if (missingVariables.length > 0) {
+  console.warn('⚠️ Supabase config issues detected');
+  console.warn('Variables con problemas:', missingVariables.join(', '));
+} else {
+  console.log('✅ Supabase configurado correctamente');
 }
 
 export const supabaseConfig = {
@@ -293,4 +307,3 @@ export interface Database {
     };
   };
 }
-

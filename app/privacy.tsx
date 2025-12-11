@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "@/providers/theme-provider";
@@ -112,18 +111,7 @@ export default function PrivacyPolicyScreen() {
           <Text style={styles.contactText}>
             {t.privacy.contact.description}
           </Text>
-          <TouchableOpacity 
-            style={styles.contactButton}
-            onPress={() => {
-              const email = t.privacy.contact.email;
-              const subject = encodeURIComponent('Privacy Policy Inquiry');
-              const body = encodeURIComponent('Hello,\n\nI have a question about the privacy policy.\n\n');
-              const mailtoUrl = `mailto:${email}?subject=${subject}&body=${body}`;
-              Linking.openURL(mailtoUrl).catch((err) => {
-                console.error('Failed to open email client:', err);
-              });
-            }}
-          >
+          <TouchableOpacity style={styles.contactButton}>
             <Mail size={20} color={theme.colors.primary} />
             <Text style={styles.contactButtonText}>{t.privacy.contact.email}</Text>
           </TouchableOpacity>

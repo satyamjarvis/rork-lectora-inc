@@ -12,7 +12,7 @@ import { StatisticsProvider } from "@/providers/statistics-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { LanguageContext } from "@/providers/language-provider";
 import { trpc, trpcClient } from "@/lib/trpc";
-import { ErrorBoundaryWrapper } from "@/components/ErrorBoundaryWrapper";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { supabase, supabaseConfig } from "@/lib/supabase";
 
 SplashScreen.preventAutoHideAsync();
@@ -89,30 +89,20 @@ export default function RootLayout() {
   useEffect(() => {
     const prepare = async () => {
       try {
-        if (__DEV__) {
-          console.log('🚀 Preparando app...');
-          console.log('🔧 Supabase configurado:', supabaseConfig.isConfigured);
-        }
+        console.log('🚀 Preparando app...');
+        console.log('🔧 Supabase configurado:', supabaseConfig.isConfigured);
         await new Promise(resolve => setTimeout(resolve, 100));
       } catch (error) {
-        if (__DEV__) {
-          console.error('Error preparando app:', error);
-        }
+        console.error('Error preparando app:', error);
       } finally {
         appReadyRef.current = true;
         try {
           await new Promise(resolve => setTimeout(resolve, 300));
-          if (__DEV__) {
-            console.log('👋 Ocultando splash screen...');
-          }
+          console.log('👋 Ocultando splash screen...');
           await SplashScreen.hideAsync();
-          if (__DEV__) {
-            console.log('✅ Splash screen oculto');
-          }
+          console.log('✅ Splash screen oculto');
         } catch (splashError) {
-          if (__DEV__) {
-            console.warn('⚠️ Error ocultando splash:', splashError);
-          }
+          console.warn('⚠️ Error ocultando splash:', splashError);
         }
       }
     };
@@ -121,9 +111,7 @@ export default function RootLayout() {
   }, []);
 
   const handleDeepLink = useCallback(async (url: string) => {
-    if (__DEV__) {
-      console.log('🔗 Deep link recibido:', url);
-    }
+    console.log('🔗 Deep link recibido:', url);
     
     if (Platform.OS === 'web') {
       return;
@@ -131,18 +119,14 @@ export default function RootLayout() {
 
     try {
       const parsedUrl = Linking.parse(url);
-      if (__DEV__) {
-        try {
-          console.log('🔗 URL parseada:', JSON.stringify(parsedUrl, null, 2));
-        } catch {
-          console.log('🔗 URL parseada: [Error serializing]');
-        }
+      try {
+        console.log('🔗 URL parseada:', JSON.stringify(parsedUrl, null, 2));
+      } catch {
+        console.log('🔗 URL parseada: [Error serializing]');
       }
 
       if (parsedUrl.path?.includes('oauth/callback') || url.includes('access_token=')) {
-        if (__DEV__) {
-          console.log('🔐 Detectado callback de OAuth');
-        }
+        console.log('🔐 Detectado callback de OAuth');
         
         const hashIndex = url.indexOf('#');
         if (hashIndex !== -1) {
@@ -151,53 +135,37 @@ export default function RootLayout() {
           const accessToken = params.get('access_token');
           const refreshToken = params.get('refresh_token');
           
-          if (__DEV__) {
-            console.log('🔑 Access token presente:', !!accessToken);
-            console.log('🔑 Refresh token presente:', !!refreshToken);
-          }
+          console.log('🔑 Access token presente:', !!accessToken);
+          console.log('🔑 Refresh token presente:', !!refreshToken);
           
           if (accessToken && refreshToken) {
-            if (__DEV__) {
-              console.log('✅ Estableciendo sesión...');
-            }
+            console.log('✅ Estableciendo sesión...');
             const { data, error } = await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
             });
             
             if (error) {
-              if (__DEV__) {
-                console.error('❌ Error al establecer sesión:', error);
-              }
+              console.error('❌ Error al establecer sesión:', error);
             } else {
-              if (__DEV__) {
-                console.log('✅ Sesión establecida exitosamente');
-                console.log('✅ Usuario:', data.user?.email);
-              }
+              console.log('✅ Sesión establecida exitosamente');
+              console.log('✅ Usuario:', data.user?.email);
             }
           } else {
-            if (__DEV__) {
-              console.warn('⚠️ No se encontraron tokens en la URL');
-            }
+            console.warn('⚠️ No se encontraron tokens en la URL');
           }
         } else {
-          if (__DEV__) {
-            console.warn('⚠️ URL no contiene fragmento (#)');
-          }
+          console.warn('⚠️ URL no contiene fragmento (#)');
         }
       }
     } catch (error) {
-      if (__DEV__) {
-        console.error('❌ Error procesando deep link:', error);
-      }
+      console.error('❌ Error procesando deep link:', error);
     }
   }, []);
 
   useEffect(() => {
     if (!supabaseConfig.isConfigured) {
-      if (__DEV__) {
-        console.warn('⚠️ Supabase no configurado, deep links deshabilitados');
-      }
+      console.warn('⚠️ Supabase no configurado, deep links deshabilitados');
       return;
     }
 
@@ -207,9 +175,7 @@ export default function RootLayout() {
 
     Linking.getInitialURL().then((url) => {
       if (url) {
-        if (__DEV__) {
-          console.log('🔗 Initial URL:', url);
-        }
+        console.log('🔗 Initial URL:', url);
         handleDeepLink(url);
       }
     });
@@ -220,10 +186,10 @@ export default function RootLayout() {
   }, [handleDeepLink]);
 
   return (
-    <ErrorBoundaryWrapper>
+    <ErrorBoundary>
       <AppProviders>
         <RootLayoutNav />
       </AppProviders>
-    </ErrorBoundaryWrapper>
+    </ErrorBoundary>
   );
 }
