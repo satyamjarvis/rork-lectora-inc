@@ -66,8 +66,8 @@
     "extra": {
 			"eas": {
  				 "projectId": "c746cab9-dfb2-44be-bc97-2d9e426a772b"
-						}
-			},
+			}
+		},
     "updates": {
       "enabled": true,
       "url": "<UNKNOWN>",
