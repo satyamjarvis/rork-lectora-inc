@@ -38,6 +38,9 @@ export interface Translations {
       passwordTooShort: string;
       alreadyHaveAccount: string;
       signIn: string;
+      invalidEmail: string;
+      networkError: string;
+      retry: string;
     };
     verifyEmail: {
       title: string;
@@ -506,6 +509,9 @@ export const translations: Record<Language, Translations> = {
         passwordTooShort: "Password must be at least 6 characters",
         alreadyHaveAccount: "Already have an account?",
         signIn: "Sign In",
+        invalidEmail: "Invalid email address",
+        networkError: "Connection error. Check your internet and try again.",
+        retry: "Retry",
       },
       verifyEmail: {
         title: "Verify Your Email",
@@ -971,6 +977,9 @@ export const translations: Record<Language, Translations> = {
         passwordTooShort: "La contraseña debe tener al menos 6 caracteres",
         alreadyHaveAccount: "¿Ya tienes una cuenta?",
         signIn: "Iniciar Sesión",
+        invalidEmail: "Correo electrónico no válido",
+        networkError: "Error de conexión. Verifica tu internet e intenta de nuevo.",
+        retry: "Reintentar",
       },
       verifyEmail: {
         title: "Verifica tu Correo",

@@ -287,7 +287,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
     try {
-      const { data, error } = await supabase.auth.signUp({
+      console.log('📝 Iniciando registro de usuario...');
+      
+      const signUpPromise = supabase.auth.signUp({
         email,
         password,
         options: {
@@ -297,13 +299,55 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           },
         },
       });
+      
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('TIMEOUT')), 15000)
+      );
+      
+      let result;
+      try {
+        result = await Promise.race([signUpPromise, timeoutPromise]);
+      } catch (raceError: any) {
+        if (raceError?.message === 'TIMEOUT') {
+          console.error('⏱️ Timeout durante el registro');
+          throw new Error('La solicitud tardó demasiado. Verifica tu conexión a internet e intenta de nuevo.');
+        }
+        throw raceError;
+      }
+      
+      const { data, error } = result;
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error de Supabase en signup:', error);
+        
+        if (error.message?.toLowerCase().includes('network') || 
+            error.message?.toLowerCase().includes('fetch') ||
+            error.message?.toLowerCase().includes('connection')) {
+          throw new Error('Error de conexión. Verifica tu internet e intenta de nuevo.');
+        }
+        
+        if (error.message?.toLowerCase().includes('already registered') ||
+            error.message?.toLowerCase().includes('user already exists')) {
+          throw new Error('Este correo ya está registrado. Intenta iniciar sesión.');
+        }
+        
+        if (error.message?.toLowerCase().includes('invalid email')) {
+          throw new Error('El correo electrónico no es válido.');
+        }
+        
+        if (error.message?.toLowerCase().includes('password')) {
+          throw new Error('La contraseña debe tener al menos 6 caracteres.');
+        }
+        
+        throw new Error(error.message || 'Error al crear la cuenta. Intenta de nuevo.');
+      }
 
-      if (!data.user) {
+      if (!data?.user) {
         throw new Error('No se pudo completar el registro. Intenta de nuevo.');
       }
 
+      console.log('✅ Usuario creado exitosamente:', data.user.id);
+      
       const hasActiveSession = Boolean(data.session?.access_token);
 
       if (!hasActiveSession) {
@@ -319,8 +363,17 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       await loadUserProfile(data.user);
       setPendingVerification(null);
     } catch (error: any) {
-      console.error('Sign up error:', error);
-      throw new Error(error.message || 'Error al registrarse');
+      console.error('❌ Sign up error completo:', error);
+      console.error('❌ Mensaje:', error?.message);
+      
+      if (error?.message?.includes('Network request failed') || 
+          error?.message?.includes('network') ||
+          error?.message?.includes('Failed to fetch') ||
+          error?.name === 'TypeError') {
+        throw new Error('Error de conexión. Verifica tu internet e intenta de nuevo.');
+      }
+      
+      throw new Error(error?.message || 'Error al registrarse. Por favor intenta de nuevo.');
     }
   }, [loadUserProfile]);
 
